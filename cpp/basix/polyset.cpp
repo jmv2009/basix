@@ -2133,6 +2133,8 @@ void tabulate_polyset_tetrahedron_derivs(
   }
 }
 //-----------------------------------------------------------------------------
+//#include <cstdio>
+
 template <typename T>
 void tabulate_polyset_pyramid_derivs(
     MDSPAN_IMPL_STANDARD_NAMESPACE::mdspan<
@@ -2143,9 +2145,22 @@ void tabulate_polyset_pyramid_derivs(
         const T, MDSPAN_IMPL_STANDARD_NAMESPACE::dextents<std::size_t, 2>>
         x)
 {
+//  assert(nderiv != 0);
+  //       if (nderiv < 1)
+//       {
+   //    std::sprintf("%s","a")
+//        throw std::runtime_error("need 1st derivative");
+   //     "test">stdout;
+ //       std::printf("Hello, world!");
+
+ //      }
+//  if (nderiv!=1) {
+//  throw std::runtime_error(
+//            "nderivs"+std::to_string(nderiv));};
+            
   assert(x.extent(1) == 3);
   assert(P.extent(0) == (nderiv + 1) * (nderiv + 2) * (nderiv + 3) / 6);
-  assert(P.extent(1) == (n + 1) * (n + 2) * (2 * n + 3) / 6);
+  assert(P.extent(1) == (n + 1) * (n + 2) * (2 * n + 3) / 6 * 4);
   assert(P.extent(2) == x.extent(0));
 
   // Indexing for pyramidal basis functions
@@ -2173,7 +2188,7 @@ void tabulate_polyset_pyramid_derivs(
     MDSPAN_IMPL_STANDARD_NAMESPACE::full_extent);
 
     for (std::size_t i = 0; i < p00.size(); ++i)
-      p00[i] = 1.0/(1.0-x2[i]);
+      p00[i] = 1.0; ///(1.0-x2[i]);
   }      
 
 //  if (n == 0)
@@ -2353,7 +2368,7 @@ void tabulate_polyset_pyramid_derivs(
             {
               r_pq1[i]
                   = r_pq0[i]
-                    * (std::max(p, q) + (x2[i] * 2.0 - 1.0) * (1.0 + std::max(p, q)));
+                    * (1.0 + std::max(p, q) + (x2[i] * 2.0 - 1.0) * (2.0 + std::max(p, q)));
             }
 
             if (kz > 0)
@@ -2362,7 +2377,7 @@ void tabulate_polyset_pyramid_derivs(
                   P, idx(kx, ky, kz - 1), pyr_idx(p, q, 0),
                   MDSPAN_IMPL_STANDARD_NAMESPACE::full_extent);
               for (std::size_t i = 0; i < r_pq1.size(); ++i)
-                r_pq1[i] += 2 * kz * r_pq[i] * (1.0 + std::max(p, q));
+                r_pq1[i] += 2 * kz * r_pq[i] * (2.0 + std::max(p, q));
             }
           }
         }
@@ -2373,7 +2388,7 @@ void tabulate_polyset_pyramid_derivs(
           {
             for (std::size_t q = 0; q < n - r; ++q)
             {
-              auto [ar, br, cr] = jrc<T>(2 * std::max(p, q), r);
+              auto [ar, br, cr] = jrc<T>(2 * std::max(p, q) + 2.0, r);
               auto r_pqr = MDSPAN_IMPL_STANDARD_NAMESPACE::submdspan(
                   P, idx(kx, ky, kz), pyr_idx(p, q, r + 1),
                   MDSPAN_IMPL_STANDARD_NAMESPACE::full_extent);
@@ -2416,11 +2431,32 @@ void tabulate_polyset_pyramid_derivs(
         for (std::size_t i = 0; i < pqr.extent(0); ++i)
           for (std::size_t j = 0; j < pqr.extent(1); ++j)
             pqr(i, j)
-                *= std::sqrt(2 * (q + 0.5) * (p + 0.5) * (std::max(p, q) + r + 0.5));
+                *= std::sqrt(2 * (q + 0.5) * (p + 0.5) * (std::max(p, q) + r + 1.5));
+      }
+    }
+  }
+  for (std::size_t d = 0; d <=  2; ++d)
+  for (std::size_t r = 0; r <= n; ++r)
+  {
+    for (std::size_t p = 0; p <= n - r; ++p)
+    {
+      for (std::size_t q = 0; q <= n - r; ++q)
+      {
+        auto pqr = MDSPAN_IMPL_STANDARD_NAMESPACE::submdspan(
+            P, 0,  pyr_idx(p, q, r) + (n + 1) * (n + 2) * (2 * n + 3) / 6 * (d + 1) ,
+            MDSPAN_IMPL_STANDARD_NAMESPACE::full_extent);
+        auto pqrd = MDSPAN_IMPL_STANDARD_NAMESPACE::submdspan(
+            P, 1 + d, pyr_idx(p, q, r),
+            MDSPAN_IMPL_STANDARD_NAMESPACE::full_extent);
+        for (std::size_t i = 0; i < pqr.extent(0); ++i)
+            pqr(i)=pqrd(i);
+//                *= std::sqrt(2 * (q + 0.5) * (p + 0.5) * (std::max(p, q) + r + 1.5));
       }
     }
   }
 }
+
+
 //-----------------------------------------------------------------------------
 template <typename T>
 void tabulate_polyset_quad_derivs(
@@ -3281,7 +3317,7 @@ int polyset::dim(cell::type celltype, polyset::type ptype, int d)
     case cell::type::prism:
       return (d + 1) * (d + 1) * (d + 2) / 2;
     case cell::type::pyramid:
-      return (d + 1) * (d + 2) * (2 * d + 3) / 6;
+      return (d + 1) * (d + 2) * (2 * d + 3) / 6 * 4;
     case cell::type::interval:
       return (d + 1);
     case cell::type::quadrilateral:
